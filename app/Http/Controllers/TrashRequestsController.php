@@ -71,7 +71,7 @@ class TrashRequestsController extends Controller
 
 
             if (isset($_GET['user_id'])) {
-                $data = TrashRequests::where('user_id',Auth::id());
+                $data = TrashRequests::where('user_id',$_GET['user_id']);
             }
 
             if (isset($_GET['search'])) {
