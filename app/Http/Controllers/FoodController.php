@@ -33,6 +33,11 @@ class FoodController extends Controller
             }
             if ($data->count() > 0) {
                 $data = $data->paginate($limit);
+                $data->getCollection()->transform(function ($value) {
+                    $datas = $value;
+                    $datas['url'] = env('APP_URL').'/api/getFile/FoodThumb/'.$value->thumb;
+                    return $datas;
+                });
                 $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diambil', 'data' => $data,'timestamp' => now()->toIso8601String()]);
                 $data = $custom->merge($data);
                 return response()->json($data, 200);

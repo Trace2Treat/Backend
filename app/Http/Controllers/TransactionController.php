@@ -7,43 +7,96 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
-    public function purchaseFood(Request $request, $foodId)
+    public function index(Request $request)
     {
-        $food = Food::findOrFail($foodId);
+        if (isset($_GET['id'])) {
+            $data = Transaction::where('id', $_GET['id'])->first();
+            if ($data) {
+                $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diambil', 'data' => $data,'timestamp' => now()->toIso8601String()]);
+                return response()->json($custom, 200);
+            } else {
+                $custom = collect(['status' => 'error','statusCode' => 404, 'message' => 'Data tidak ditemukan', 'data' => null]);
+                $data = $custom->merge($data);
+                return response()->json($data, 404);
+            }
+        } else {
 
-        $validator = Validator::make($request->all(), [
-            'quantity' => 'required|numeric|min:1',
-        ]);
+            $limit = $_GET['limit'] ?? 10;
+            $data = Transaction::where('user_id', Auth::id())->orderBy('id', 'DESC');
+            if (isset($_GET['search'])) {
+                $data = $data->where('name', 'like', '%' . $_GET['search'] . '%');
+            }
+            if ($data->count() > 0) {
+                $data = $data->paginate($limit);
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+
+                $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diambil', 'data' => $data,'timestamp' => now()->toIso8601String()]);
+                $data = $custom->merge($data);
+                return response()->json($data, 200);
+            } else {
+                $custom = collect(['status' => 'error','statusCode' => 404, 'message' => 'Data tidak ditemukan', 'data' => null]);
+                return response()->json($custom, 404);
+            }
+        }
+    }
+
+    public function purchaseFood(Request $request)
+    {
+
+        $order_id = $this->generateTransactionCode();
+        $total = 0;
+        $tot = 0;
+
+        foreach ($request->items as $key => $item) {
+            $food = Food::findOrFail($item['food_id']);
+            $tot += $item['qty'] * $food->price;
         }
 
-        $quantity = $request->input('quantity');
-        $totalAmount = $food->price * $quantity;
+        if ($tot > Auth::user()->balance_coin) {
+            $custom = collect(['status' => 'error','statusCode' => 400, 'message' => 'Saldo tidak cukup', 'data' => null,'timestamp' => now()->toIso8601String()]);
+            return response()->json($custom, 401);
+        }
+
+        $item_order = [];
+        foreach ($request->items as $key => $item) {
+            $food = Food::findOrFail($item['food_id']);
+            $total += $item['qty'] * $food->price;
+            $it = [
+                'transaction_id' => $order_id,
+                'food_id' => $item['food_id'],
+                'qty' => $item['qty'],
+                'total' => $item['qty'] * $food->price,
+            ];
+            DB::table('orders')->insert($it);
+            $it['food'] = $food;
+            $item_order[] = $it;
+        }
 
         $data = [
-            'transaction_code' => $this->generateTransactionCode(),
+            'transaction_code' => $order_id,
+            'address' => $request->address,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
             'status' => 'pending',
-            'total' => $totalAmount,
+            'total' => $total,
             'user_id' => Auth::id(),
-            'food_id' => $food->id,
             'driver_id' => null,
         ];
         $transaction = new Transaction($data);
-
         $transaction->save();
+        $data['items'] = $item_order;
 
-        $transaction->save();
+
+
+        $user = Auth::user();
+        $user->balance_coin = $user->balance_coin - $total;
+        $user->save();
         $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data transaksi berhasil disimpan', 'data' => $data,'timestamp' => now()->toIso8601String()]);
         return response()->json($custom, 200);
-
-        // $midtransSnapToken = $this->generateMidtransSnapToken($transaction);
-
-        // return response()->json(['snap_token' => $midtransSnapToken]);
     }
 
     public function purchaseProduct(Request $request, $productId)
@@ -80,62 +133,75 @@ class TransactionController extends Controller
         // return response()->json(['snap_token' => $midtransSnapToken]);
     }
 
-    private function generateMidtransSnapToken(Transaction $transaction)
+    public function changeStatus(Request $request, $id)
     {
-        MidtransConfig::$serverKey = config('services.midtrans.server_key');
-        MidtransConfig::$isProduction = config('services.midtrans.is_production');
-        MidtransConfig::$isSanitized = true;
-        MidtransConfig::$is3ds = true;
 
-        $midtransParams = [
-            'transaction_details' => [
-                'order_id' => $transaction->id,
-                'gross_amount' => $transaction->total_amount,
-            ],
-            'customer_details' => [
-                'first_name' => Auth::user()->name,
-                'email' => Auth::user()->email,
-            ],
-            'item_details' => [
-                [
-                    'id' => $transaction->food_id ?? $transaction->product_id,
-                    'price' => $transaction->total_amount,
-                    'quantity' => $transaction->quantity,
-                    'name' => $transaction->food->name ?? $transaction->product->name,
-                    'category' => $transaction->food->category->name ?? $transaction->product->category->name,
-                    'merchant_name' => config('app.name'),
-                ],
-            ],
-        ];
+        $wasteRequest = Transaction::findOrFail($id);
+        $wasteRequest->status = $request->status;
+        $wasteRequest->driver_id = Auth::id();
+        $wasteRequest->save();
 
-        $midtransSnapToken = MidtransSnap::getSnapToken($midtransParams);
 
-        return $midtransSnapToken;
+        $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diupdate', 'data' => null,'timestamp' => now()->toIso8601String()]);
+        return response()->json($custom, 200);
     }
 
-    public function midtransCallback(Request $request)
-    {
-        $transactionStatus = $request->input('transaction_status');
-        $orderId = $request->input('order_id');
-        if ($transactionStatus === 'capture') {
-            $transaction = Transaction::find($orderId);
-            $transaction->status = 'Success';
-            $transaction->save();
+    // private function generateMidtransSnapToken(Transaction $transaction)
+    // {
+    //     MidtransConfig::$serverKey = config('services.midtrans.server_key');
+    //     MidtransConfig::$isProduction = config('services.midtrans.is_production');
+    //     MidtransConfig::$isSanitized = true;
+    //     MidtransConfig::$is3ds = true;
 
-        } elseif ($transactionStatus === 'settlement') {
+    //     $midtransParams = [
+    //         'transaction_details' => [
+    //             'order_id' => $transaction->id,
+    //             'gross_amount' => $transaction->total_amount,
+    //         ],
+    //         'customer_details' => [
+    //             'first_name' => Auth::user()->name,
+    //             'email' => Auth::user()->email,
+    //         ],
+    //         'item_details' => [
+    //             [
+    //                 'id' => $transaction->food_id ?? $transaction->product_id,
+    //                 'price' => $transaction->total_amount,
+    //                 'quantity' => $transaction->quantity,
+    //                 'name' => $transaction->food->name ?? $transaction->product->name,
+    //                 'category' => $transaction->food->category->name ?? $transaction->product->category->name,
+    //                 'merchant_name' => config('app.name'),
+    //             ],
+    //         ],
+    //     ];
 
-        } elseif ($transactionStatus === 'deny') {
+    //     $midtransSnapToken = MidtransSnap::getSnapToken($midtransParams);
 
-        } elseif ($transactionStatus === 'cancel') {
+    //     return $midtransSnapToken;
+    // }
 
-        } elseif ($transactionStatus === 'expire') {
+    // public function midtransCallback(Request $request)
+    // {
+    //     $transactionStatus = $request->input('transaction_status');
+    //     $orderId = $request->input('order_id');
+    //     if ($transactionStatus === 'capture') {
+    //         $transaction = Transaction::find($orderId);
+    //         $transaction->status = 'Success';
+    //         $transaction->save();
 
-        } elseif ($transactionStatus === 'pending') {
+    //     } elseif ($transactionStatus === 'settlement') {
 
-        }
+    //     } elseif ($transactionStatus === 'deny') {
 
-        return response()->json(['status' => 'success']);
-    }
+    //     } elseif ($transactionStatus === 'cancel') {
+
+    //     } elseif ($transactionStatus === 'expire') {
+
+    //     } elseif ($transactionStatus === 'pending') {
+
+    //     }
+
+    //     return response()->json(['status' => 'success']);
+    // }
 
     private function generateTransactionCode()
     {
