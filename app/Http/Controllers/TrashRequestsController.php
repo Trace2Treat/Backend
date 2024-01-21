@@ -193,6 +193,7 @@ class TrashRequestsController extends Controller
             'trash_weight' => 'required|string',
             'latitude' => 'required|string',
             'longitude' => 'required|string',
+            'place_name' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -209,6 +210,7 @@ class TrashRequestsController extends Controller
             'trash_weight' => $request->trash_weight,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'place_name' => $request->place_name,
             'status' => 'Pending',
             'driver_id' => null,
         ];
@@ -299,6 +301,8 @@ class TrashRequestsController extends Controller
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'status' => 'Pending',
+                'place_name' => $request->place_name,
+
                 'thumb' => $filename,
                 'driver_id' => null,
             ];
@@ -322,6 +326,8 @@ class TrashRequestsController extends Controller
                 'trash_weight' => $request->trash_weight,
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
+                'place_name' => $request->place_name,
+
                 'status' => 'Pending',
                 'driver_id' => null,
             ];
