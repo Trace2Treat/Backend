@@ -33,22 +33,93 @@ class TrashRequestsController extends Controller
         return $distance;
     }
 
+
+    public function checkLocation()
+    {
+        $latitude = '-6.65476';
+        $longitude = '106.7682632';
+        $geolocation = $latitude . ',' . $longitude;
+        $request = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' . $geolocation . '&sensor=false&key=AIzaSyBPQgUMf_TbTbbNxxNpYbtc_-5Ok3K6jgE';
+        $file_contents = file_get_contents($request);
+        $json_decode = json_decode($file_contents);
+
+        if(isset($json_decode->results[0])) {
+            $response = array();
+            foreach($json_decode->results[0]->address_components as $addressComponet) {
+                if(in_array('political', $addressComponet->types)) {
+                    $response[] = $addressComponet->long_name;
+                    print_r($response); // no error
+                }
+            }
+
+            if(isset($response[0])) {
+                $first  =  $response[0];
+            } else {
+                $first  = 'null';
+            }
+            if(isset($response[1])) {
+                $second =  $response[1];
+            } else {
+                $second = 'null';
+            }
+            if(isset($response[2])) {
+                $third  =  $response[2];
+            } else {
+                $third  = 'null';
+            }
+            if(isset($response[3])) {
+                $fourth =  $response[3];
+            } else {
+                $fourth = 'null';
+            }
+            if(isset($response[4])) {
+                $fifth  =  $response[4];
+            } else {
+                $fifth  = 'null';
+            }
+
+            if($first != 'null' && $second != 'null' && $third != 'null' && $fourth != 'null' && $fifth != 'null') {
+                echo "<br/>Address:: " . $first;
+                echo "<br/>City:: " . $second;
+                echo "<br/>State:: " . $fourth;
+                echo "<br/>Country:: " . $fifth;
+                print_r($response);// No error
+            } elseif ($first != 'null' && $second != 'null' && $third != 'null' && $fourth != 'null' && $fifth == 'null') {
+                echo "<br/>Address:: " . $first;
+                echo "<br/>City:: " . $second;
+                echo "<br/>State:: " . $third;
+                echo "<br/>Country:: " . $fourth;
+            } elseif ($first != 'null' && $second != 'null' && $third != 'null' && $fourth == 'null' && $fifth == 'null') {
+                echo "<br/>City:: " . $first;
+                echo "<br/>State:: " . $second;
+                echo "<br/>Country:: " . $third;
+            } elseif ($first != 'null' && $second != 'null' && $third == 'null' && $fourth == 'null' && $fifth == 'null') {
+                echo "<br/>State:: " . $first;
+                echo "<br/>Country:: " . $second;
+            } elseif ($first != 'null' && $second == 'null' && $third == 'null' && $fourth == 'null' && $fifth == 'null') {
+                echo "<br/>Country:: " . $first;
+            }
+        }
+        print_r($response);// error
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
         if (isset($_GET['id'])) {
-            $data = TrashRequests::with('driver')->where('id', $_GET['id'])->first();
+            $data = TrashRequests::with('user', 'driver')->where('id', $_GET['id'])->first();
 
             try {
                 $distance = round($this->haversineDistance($_GET['lot'], $_GET['lang'], $data->latitude, $data->longitude));
             } catch (\Throwable $th) {
                 //throw $th;
             }
+            $data['place_name'] = '-';
+
 
             if ($data->proof_payment != null) {
-                $data['proof_payment_url'] = env('APP_URL').'/api/getFile/ProofPayment/'.$data->proof_payment;
+                $data['proof_payment_url'] = env('APP_URL') . '/api/getFile/ProofPayment/' . $data->proof_payment;
             }
             try {
                 $data['distance'] = $distance;
@@ -67,11 +138,11 @@ class TrashRequestsController extends Controller
             }
         } else {
             $limit = $_GET['limit'] ?? 10;
-            $data = TrashRequests::where('id', '!=', null);
+            $data = TrashRequests::with('user', 'driver')->where('id', '!=', null);
 
 
             if (isset($_GET['user_id'])) {
-                $data = TrashRequests::where('user_id',$_GET['user_id']);
+                $data = TrashRequests::with('user', 'driver')->where('user_id', $_GET['user_id']);
             }
 
             if (isset($_GET['search'])) {
@@ -82,6 +153,8 @@ class TrashRequestsController extends Controller
 
                 $data->getCollection()->transform(function ($value) {
                     $datas = $value;
+                    $datas['place_name'] = '-';
+
                     $dateTime = Carbon::parse($value->updated_at);
                     $formattedDate = $dateTime->format('l, d F Y');
                     $datas['date'] = $formattedDate;
