@@ -115,7 +115,6 @@ class TrashRequestsController extends Controller
             } catch (\Throwable $th) {
                 //throw $th;
             }
-            $data['place_name'] = '-';
 
 
             if ($data->proof_payment != null) {
@@ -153,7 +152,6 @@ class TrashRequestsController extends Controller
 
                 $data->getCollection()->transform(function ($value) {
                     $datas = $value;
-                    $datas['place_name'] = '-';
 
                     $dateTime = Carbon::parse($value->updated_at);
                     $formattedDate = $dateTime->format('l, d F Y');
