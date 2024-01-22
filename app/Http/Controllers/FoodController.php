@@ -31,6 +31,10 @@ class FoodController extends Controller
             if (isset($_GET['search'])) {
                 $data = $data->where('name', 'like', '%' . $_GET['search'] . '%');
             }
+
+            if (isset($_GET['restaurant_id'])) {
+                $data = $data->where('restaurant_id', $_GET['restaurant_id']);
+            }
             if ($data->count() > 0) {
                 $data = $data->paginate($limit);
                 $data->getCollection()->transform(function ($value) {

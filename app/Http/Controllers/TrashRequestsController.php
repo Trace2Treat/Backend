@@ -143,6 +143,13 @@ class TrashRequestsController extends Controller
             if (isset($_GET['user_id'])) {
                 $data = TrashRequests::with('user', 'driver')->where('user_id', $_GET['user_id']);
             }
+            if (isset($_GET['driver_id'])) {
+                $data = $data->where('driver_id', $_GET['driver_id']);
+            }
+
+            if (isset($_GET['status'])) {
+                $data = $data->where('status', $_GET['status']);
+            }
 
             if (isset($_GET['search'])) {
                 $data = $data->where('name', 'like', '%' . $_GET['search'] . '%');
