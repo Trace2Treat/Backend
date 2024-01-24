@@ -24,6 +24,11 @@ Route::get('/getFile/{folder}/{filename}', function ($folder,$filename) {
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+
+    if (Auth::user()->role == 'RESTAURANT_OWNER') {
+        $resto = DB::table('restaurants')->where('owner_id', Auth::user()->id)->first();
+        $request->user()->restaurant = $resto;
+    }
     return $request->user();
 });
 
