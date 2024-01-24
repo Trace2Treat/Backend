@@ -37,11 +37,11 @@ class FoodController extends Controller
             }
             if ($data->count() > 0) {
                 $data = $data->paginate($limit);
-                $data->getCollection()->transform(function ($value) {
-                    $datas = $value;
-                    $datas['url'] = env('APP_URL').'/api/getFile/FoodThumb/'.$value->thumb;
-                    return $datas;
-                });
+                // $data->getCollection()->transform(function ($value) {
+                //     $datas = $value;
+                //     $datas['url'] = env('APP_URL').'/api/getFile/FoodThumb/'.$value->thumb;
+                //     return $datas;
+                // });
                 $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diambil', 'data' => $data,'timestamp' => now()->toIso8601String()]);
                 $data = $custom->merge($data);
                 return response()->json($data, 200);
@@ -62,7 +62,7 @@ class FoodController extends Controller
             'description' => 'required|string|max:255',
             'price' => 'required|numeric',
             'stock' => 'required|numeric',
-            'thumb' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'thumb' => 'required|string',
             'category_id' => 'required|numeric',
         ]);
 
@@ -77,9 +77,9 @@ class FoodController extends Controller
             return response()->json($validator->errors());
         }
 
-        $file = $request->file('thumb');
-        $filename = time() . '-' . $file->getClientOriginalName();
-        Storage::disk('public')->put('FoodThumb/' . $filename, file_get_contents($file));
+        // $file = $request->file('thumb');
+        // $filename = time() . '-' . $file->getClientOriginalName();
+        // Storage::disk('public')->put('FoodThumb/' . $filename, file_get_contents($file));
 
         $data = [
             'name' => $request->name,
@@ -87,7 +87,7 @@ class FoodController extends Controller
             'price' => $request->price,
             'stock' => $request->stock,
             'category_id' => $request->category_id,
-            'thumb' => $filename,
+            'thumb' => $request->thumb,
             'restaurant_id' => $restaurant->id,
         ];
         $user = Food::create($data);
@@ -101,16 +101,51 @@ class FoodController extends Controller
      */
     public function update(Request $request, $id)
     {
-        if ($request->hasFile('file')) {
+        // if ($request->hasFile('file')) {
+        //     $validator = Validator::make($request->all(), [
+        //         'name' => 'required|string|max:255',
+        //         'description' => 'required|string|max:255',
+        //         'price' => 'required|numeric',
+        //         'stock' => 'required|numeric',
+        //         'thumb' => 'required|string',
+        //         'category_id' => 'required|numeric',
+        //     ]);
+
+
+        //     $restaurant = Restaurant::where('owner_id', Auth::id())->firstOrFail();
+
+        //     if(!$restaurant) {
+        //         $custom = collect(['status' => 'error','statusCode' => 404, 'message' => 'Restaurant tidak ditemukan', 'data' => null]);
+        //         return response()->json($custom, 404);
+        //     }
+
+        //     if ($validator->fails()) {
+        //         return response()->json($validator->errors());
+        //     }
+
+        //     // $file = $request->file('thumb');
+        //     // $filename = time() . '-' . $file->getClientOriginalName();
+        //     // Storage::disk('public')->put('FoodThumb/' . $filename, file_get_contents($file));
+
+        //     $data = [
+        //         'name' => $request->name,
+        //         'description' => $request->description,
+        //         'price' => $request->price,
+        //         'stock' => $request->stock,
+        //         'category_id' => $request->category_id,
+        //         'thumb' => $filename,
+        //         'restaurant_id' => $restaurant->id,
+        //     ];
+        //     $user = Food::where('id',$id)->update($data);
+        // } else {
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'description' => 'required|string|max:255',
                 'price' => 'required|numeric',
+                'thumb' => 'required|string',
                 'stock' => 'required|numeric',
-                'thumb' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
                 'category_id' => 'required|numeric',
             ]);
-
 
             $restaurant = Restaurant::where('owner_id', Auth::id())->firstOrFail();
 
@@ -119,50 +154,17 @@ class FoodController extends Controller
                 return response()->json($custom, 404);
             }
 
-            if ($validator->fails()) {
-                return response()->json($validator->errors());
-            }
-
-            $file = $request->file('thumb');
-            $filename = time() . '-' . $file->getClientOriginalName();
-            Storage::disk('public')->put('FoodThumb/' . $filename, file_get_contents($file));
-
             $data = [
                 'name' => $request->name,
                 'description' => $request->description,
                 'price' => $request->price,
                 'stock' => $request->stock,
-                'category_id' => $request->category_id,
-                'thumb' => $filename,
-                'restaurant_id' => $restaurant->id,
-            ];
-            $user = Food::where('id',$id)->update($data);
-        } else {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255',
-                'description' => 'required|string|max:255',
-                'price' => 'required|numeric',
-                'stock' => 'required|numeric',
-                'category_id' => 'required|numeric',
-            ]);
-
-            $restaurant = Restaurant::where('owner_id', Auth::id())->firstOrFail();
-
-            if(!$restaurant) {
-                $custom = collect(['status' => 'error','statusCode' => 404, 'message' => 'Restaurant tidak ditemukan', 'data' => null]);
-                return response()->json($custom, 404);
-            }
-
-            $data = [
-                'name' => $request->name,
-                'description' => $request->description,
-                'price' => $request->price,
-                'stock' => $request->stock,
+                'thumb' => $request->thumb,
                 'category_id' => $request->category_id,
                 'restaurant_id' => $restaurant->id,
             ];
             $user = Food::where('id',$id)->update($data);
-        }
+        // }
 
         $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diupdate', 'data' => $data,'timestamp' => now()->toIso8601String()]);
         return response()->json($custom, 200);

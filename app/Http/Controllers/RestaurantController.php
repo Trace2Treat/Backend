@@ -52,7 +52,7 @@ class RestaurantController extends Controller
             'description' => 'required|string|max:255',
             'address' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'logo' => 'required|string',
             'latitude' => 'required|string',
             'longitude' => 'required|string',
         ]);
@@ -61,16 +61,16 @@ class RestaurantController extends Controller
             return response()->json($validator->errors());
         }
 
-        $file = $request->file('logo');
-        $filename = time() . '-' . $file->getClientOriginalName();
-        Storage::disk('public')->put('RestaurantLogo/' . $filename, file_get_contents($file));
+        // $file = $request->file('logo');
+        // $filename = time() . '-' . $file->getClientOriginalName();
+        // Storage::disk('public')->put('RestaurantLogo/' . $filename, file_get_contents($file));
 
         $data = [
             'name' => $request->name,
             'description' => $request->description,
             'address' => $request->address,
             'phone' => $request->phone,
-            'logo' => $filename,
+            'logo' => $request->logo,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'owner_id' => Auth::id(),
@@ -91,6 +91,7 @@ class RestaurantController extends Controller
             'name' => 'required|string|max:100',
             'description' => 'required|string|max:255',
             'address' => 'required|string|max:255',
+            'logo' => 'required|string',
             'phone' => 'required|string|max:20',
             'latitude' => 'required|string',
             'longitude' => 'required|string',
@@ -106,17 +107,18 @@ class RestaurantController extends Controller
             'description' => $request->description,
             'address' => $request->address,
             'phone' => $request->phone,
+            'logo' => $request->logo,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
         ];
 
-        $file = $request->file('logo');
-        if ($file) {
-            // If a new logo is provided, update the logo
-            $filename = time() . '-' . $file->getClientOriginalName();
-            Storage::disk('public')->put('RestaurantLogo/' . $filename, file_get_contents($file));
-            $data['logo'] = $filename;
-        }
+        // $file = $request->file('logo');
+        // if ($file) {
+        //     // If a new logo is provided, update the logo
+        //     $filename = time() . '-' . $file->getClientOriginalName();
+        //     Storage::disk('public')->put('RestaurantLogo/' . $filename, file_get_contents($file));
+        //     $data['logo'] = $filename;
+        // }
 
         Restaurant::where('id',$id)->update($data);
         $custom = collect(['status' => 'success', 'statusCode' => 200, 'message' => 'Data berhasil diupdate', 'data' => $data, 'timestamp' => now()->toIso8601String()]);

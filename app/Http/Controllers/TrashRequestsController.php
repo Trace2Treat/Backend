@@ -117,9 +117,9 @@ class TrashRequestsController extends Controller
             }
 
 
-            if ($data->proof_payment != null) {
-                $data['proof_payment_url'] = env('APP_URL') . '/api/getFile/ProofPayment/' . $data->proof_payment;
-            }
+            // if ($data->proof_payment != null) {
+            //     $data['proof_payment_url'] = env('APP_URL') . '/api/getFile/ProofPayment/' . $data->proof_payment;
+            // }
             try {
                 $data['distance'] = $distance;
                 $data['shipping'] = $distance * 5000;
@@ -250,13 +250,13 @@ class TrashRequestsController extends Controller
         }
         if ($request->status == 'Finished') {
 
-            $file = $request->file('proof_payment');
-            $filename = time() . '-' . $file->getClientOriginalName();
-            Storage::disk('public')->put('ProofPayment/' . $filename, file_get_contents($file));
+            // $file = $request->file('proof_payment');
+            // $filename = time() . '-' . $file->getClientOriginalName();
+            // Storage::disk('public')->put('ProofPayment/' . $filename, file_get_contents($file));
 
             $wasteRequest = TrashRequests::findOrFail($id);
             $wasteRequest->status = $request->status;
-            $wasteRequest->proof_payment = $filename;
+            $wasteRequest->proof_payment = $request->proof_payment;
             $wasteRequest->driver_id = Auth::id();
 
             $wasteRequest->save();
