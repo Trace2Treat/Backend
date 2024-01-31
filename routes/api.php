@@ -77,6 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [TransactionController::class,'index'])->name('transaction.index');
         Route::post('/purchase-food', [TransactionController::class,'purchaseFood'])->name('transaction.purchase-food');
         Route::post('/change-status/{id}', [TransactionController::class,'changeStatus'])->name('transaction.change-status');
+        Route::post('/pay/{transaction_code}', [TransactionController::class,'pay'])->name('transaction.pay');
+        Route::get('/generate-qr-code/{transaction_code}', [TransactionController::class,'generateQrCode'])->name('transaction.generate-qr-code');
         Route::post('/store', [TransactionController::class,'store'])->name('transaction.store');
         Route::put('/update/{id}', [TransactionController::class,'update'])->name('transaction.update');
         Route::delete('/delete/{id}', [TransactionController::class,'destroy'])->name('transaction.delete');

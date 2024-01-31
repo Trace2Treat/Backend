@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Transaction,Food};
+use App\Models\{Transaction,Food,User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TransactionController extends Controller
 {
@@ -207,4 +208,45 @@ class TransactionController extends Controller
     {
         return 'TRX-' . date('YmdHis') . '-' . Auth::id() . '-' . rand(1000, 9999);
     }
+
+    // generate qr code
+    public function generateQrCode(Request $request, $transaction_code)
+    {
+            $qrCodeText = route('transaction.pay', $transaction_code);
+            $qrCode = QrCode::format('png')->size(200)->generate($qrCodeText);
+            $filename = uniqid('qrcode_') . '.png';
+            $publicPath = public_path('qrcodes');
+            if (!file_exists($publicPath)) {
+                mkdir($publicPath, 0755, true);
+            }
+            $file = $publicPath . '/' . $filename;
+            file_put_contents($file, $qrCode);
+            // return file png
+            return response()->file($file);
+    }
+
+    public function pay(Request $request, $transaction_code)
+    {
+        $transaction = Transaction::where('transaction_code', $transaction_code)->first();
+        if ($transaction) {
+            Auth::user()->balance_coin = Auth::user()->balance_coin - $transaction->total;
+            Auth::user()->save();
+
+            $resto = User::where('id',$transaction->user_id)->first();
+            $resto->balance_coin = $resto->balance_coin + $transaction->total;
+            $resto->save();
+
+
+
+
+            $transaction->status = 'success';
+            $transaction->save();
+            $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diupdate', 'data' => null,'timestamp' => now()->toIso8601String()]);
+            return response()->json($custom, 200);
+        } else {
+            $custom = collect(['status' => 'error','statusCode' => 404, 'message' => 'Data tidak ditemukan', 'data' => null]);
+            return response()->json($custom, 404);
+        }
+    }
 }
+// TRX-20240116165358-2-5133
