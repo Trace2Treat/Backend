@@ -27,13 +27,42 @@ class TransactionController extends Controller
         } else {
 
             $limit = $_GET['limit'] ?? 10;
-            $data = Transaction::where('user_id', Auth::id())->orderBy('id', 'DESC');
+            $data = Transaction::orderBy('id', 'DESC');
+
+            if (isset($_GET['user_id'])) {
+                $data = $data->where('user_id', $_GET['user_id']);
+            }
+            if (isset($_GET['driver_id'])) {
+                $data = $data->where('driver_id', $_GET['driver_id']);
+            }
+            if (isset($_GET['status'])) {
+                $data = $data->where('status', $_GET['status']);
+            }
+
+            if (isset($_GET['restaurant_id'])) {
+                $data = $data->where('restaurant_id', $_GET['restaurant_id']);
+            }
+
             if (isset($_GET['search'])) {
                 $data = $data->where('name', 'like', '%' . $_GET['search'] . '%');
             }
+
             if ($data->count() > 0) {
                 $data = $data->paginate($limit);
 
+                $data->getCollection()->transform(function ($value) {
+                    $datas = $value;
+                    $datas['items'] = DB::table('orders')->where('transaction_id', $value->transaction_code)->get();
+
+                    // get food from food id in orders
+                    $datas['items']->transform(function ($value) {
+                        $food = Food::where('id', $value->food_id)->first();
+                        $value->food = $food;
+                        return $value;
+                    });
+
+                    return $datas;
+                });
 
                 $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diambil', 'data' => $data,'timestamp' => now()->toIso8601String()]);
                 $data = $custom->merge($data);
@@ -82,6 +111,7 @@ class TransactionController extends Controller
             'address' => $request->address,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'restaurant_id' => $request->restaurant_id,
             'status' => 'pending',
             'total' => $total,
             'user_id' => Auth::id(),
@@ -147,62 +177,6 @@ class TransactionController extends Controller
         return response()->json($custom, 200);
     }
 
-    // private function generateMidtransSnapToken(Transaction $transaction)
-    // {
-    //     MidtransConfig::$serverKey = config('services.midtrans.server_key');
-    //     MidtransConfig::$isProduction = config('services.midtrans.is_production');
-    //     MidtransConfig::$isSanitized = true;
-    //     MidtransConfig::$is3ds = true;
-
-    //     $midtransParams = [
-    //         'transaction_details' => [
-    //             'order_id' => $transaction->id,
-    //             'gross_amount' => $transaction->total_amount,
-    //         ],
-    //         'customer_details' => [
-    //             'first_name' => Auth::user()->name,
-    //             'email' => Auth::user()->email,
-    //         ],
-    //         'item_details' => [
-    //             [
-    //                 'id' => $transaction->food_id ?? $transaction->product_id,
-    //                 'price' => $transaction->total_amount,
-    //                 'quantity' => $transaction->quantity,
-    //                 'name' => $transaction->food->name ?? $transaction->product->name,
-    //                 'category' => $transaction->food->category->name ?? $transaction->product->category->name,
-    //                 'merchant_name' => config('app.name'),
-    //             ],
-    //         ],
-    //     ];
-
-    //     $midtransSnapToken = MidtransSnap::getSnapToken($midtransParams);
-
-    //     return $midtransSnapToken;
-    // }
-
-    // public function midtransCallback(Request $request)
-    // {
-    //     $transactionStatus = $request->input('transaction_status');
-    //     $orderId = $request->input('order_id');
-    //     if ($transactionStatus === 'capture') {
-    //         $transaction = Transaction::find($orderId);
-    //         $transaction->status = 'Success';
-    //         $transaction->save();
-
-    //     } elseif ($transactionStatus === 'settlement') {
-
-    //     } elseif ($transactionStatus === 'deny') {
-
-    //     } elseif ($transactionStatus === 'cancel') {
-
-    //     } elseif ($transactionStatus === 'expire') {
-
-    //     } elseif ($transactionStatus === 'pending') {
-
-    //     }
-
-    //     return response()->json(['status' => 'success']);
-    // }
 
     private function generateTransactionCode()
     {
@@ -221,7 +195,6 @@ class TransactionController extends Controller
             }
             $file = $publicPath . '/' . $filename;
             file_put_contents($file, $qrCode);
-            // return file png
             return response()->file($file);
     }
 
@@ -236,9 +209,6 @@ class TransactionController extends Controller
             $resto->balance_coin = $resto->balance_coin + $transaction->total;
             $resto->save();
 
-
-
-
             $transaction->status = 'success';
             $transaction->save();
             $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diupdate', 'data' => null,'timestamp' => now()->toIso8601String()]);
@@ -249,4 +219,3 @@ class TransactionController extends Controller
         }
     }
 }
-// TRX-20240116165358-2-5133
