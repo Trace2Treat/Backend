@@ -16,6 +16,10 @@ class TransactionController extends Controller
     {
         if (isset($_GET['id'])) {
             $data = Transaction::where('id', $_GET['id'])->first();
+            $data['user'] = DB::table('users')->select('name','phone')->where('id', $data->user_id)->first();
+
+            $data['item'] = DB::table('orders')->where('transaction_id', $data->transaction_code)->get();
+
             if ($data) {
                 $custom = collect(['status' => 'success','statusCode' => 200, 'message' => 'Data berhasil diambil', 'data' => $data,'timestamp' => now()->toIso8601String()]);
                 return response()->json($custom, 200);
@@ -42,7 +46,6 @@ class TransactionController extends Controller
             if (isset($_GET['restaurant_id'])) {
                 $data = $data->where('restaurant_id', $_GET['restaurant_id']);
             }
-
             if (isset($_GET['search'])) {
                 $data = $data->where('name', 'like', '%' . $_GET['search'] . '%');
             }
@@ -53,6 +56,7 @@ class TransactionController extends Controller
                 $data->getCollection()->transform(function ($value) {
                     $datas = $value;
                     $datas['items'] = DB::table('orders')->where('transaction_id', $value->transaction_code)->get();
+                    $datas['user'] = DB::table('users')->select('name','phone')->where('id', $value->user_id)->first();
 
                     // get food from food id in orders
                     $datas['items']->transform(function ($value) {
