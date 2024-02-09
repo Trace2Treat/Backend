@@ -46,6 +46,9 @@ class TransactionController extends Controller
             if (isset($_GET['restaurant_id'])) {
                 $data = $data->where('restaurant_id', $_GET['restaurant_id']);
             }
+            if (isset($_GET['owner_id'])) {
+                $data = $data->where('owner_id', $_GET['owner_id']);
+            }
             if (isset($_GET['search'])) {
                 $data = $data->where('name', 'like', '%' . $_GET['search'] . '%');
             }
