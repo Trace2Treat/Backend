@@ -88,7 +88,9 @@ class TransactionController extends Controller
         $total = 0;
         $tot = 0;
 
-        foreach ($request->items as $key => $item) {
+        $items = json_decode($request->items, true);
+
+        foreach ($items as $key => $item) {
             $food = Food::findOrFail($item['food_id']);
             $tot += $item['qty'] * $food->price;
         }
@@ -99,7 +101,7 @@ class TransactionController extends Controller
         }
 
         $item_order = [];
-        foreach ($request->items as $key => $item) {
+        foreach ($items as $key => $item) {
             $food = Food::findOrFail($item['food_id']);
             $total += $item['qty'] * $food->price;
             $it = [
@@ -127,7 +129,6 @@ class TransactionController extends Controller
         $transaction = new Transaction($data);
         $transaction->save();
         $data['items'] = $item_order;
-
 
 
         $user = Auth::user();
