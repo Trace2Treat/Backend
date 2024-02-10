@@ -40,7 +40,8 @@ class TransactionController extends Controller
                 $data = $data->where('driver_id', $_GET['driver_id']);
             }
             if (isset($_GET['status'])) {
-                $data = $data->where('status', $_GET['status']);
+                $stat = explode(',', $_GET['status']);
+                $data = $data->whereIn('status', $stat);
             }
 
             if (isset($_GET['restaurant_id'])) {
